@@ -44,13 +44,18 @@ namespace Import.Geonames.org
 
                 switch (argument.ToLower())
                 {
+                    case "/?":
                     case "-h":
+                    case "/h":
                     case "-help":
+                    case "/help":
                         ShowHelp();
 
                         return;
                     case "-connectionstring":
+                    case "/connectionstring":
                     case "-cs":
+                    case "/cs":
                         i++;
 
                         if (args.Length < i + 1)
@@ -71,7 +76,9 @@ namespace Import.Geonames.org
 
                         break;
                     case "-tempfolder":
+                    case "/tempfolder":
                     case "-tf":
+                    case "/tf":
                         i++;
 
                         if (args.Length < i + 1)

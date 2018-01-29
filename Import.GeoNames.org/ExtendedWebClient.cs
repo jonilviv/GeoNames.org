@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Net;
 
-namespace ImportGeoNames
+namespace Import.GeoNames.org
 {
     internal class ExtendedWebClient : WebClient
     {

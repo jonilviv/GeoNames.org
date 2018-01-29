@@ -11,7 +11,6 @@ using System.Security.Principal;
 using System.Threading.Tasks;
 using Import.GeoNames.org;
 using Import.GeoNames.org.Properties;
-using ImportGeoNames;
 
 namespace Import.Geonames.org
 {

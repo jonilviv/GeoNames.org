@@ -19,6 +19,8 @@ namespace Import.Geonames.org
         private const string __baseUrl = @"http://download.geonames.org/export/dump/";
         private const string __postalCodesBaseUrl = @"http://download.geonames.org/export/zip/";
 
+        private static volatile bool _shrinkInProggress;
+
         private static string _tempFolderName;
         private static string _connectionString;
         private static ImportEntity[] _tablesNames;
@@ -120,9 +122,7 @@ namespace Import.Geonames.org
 
             BuildTables();
 
-            Parallel.ForEach(__tablesNames, DoImportEntity);
-
-            FinalClear();
+            Parallel.ForEach(_tablesNames, DoImportEntity);
 
             ReadKey();
         }
@@ -244,26 +244,68 @@ namespace Import.Geonames.org
         {
             try
             {
-                var url = __baseUrl + importEntity.FileName;
-                var fileName = Path.Combine(_tempFolderName, importEntity.FileName);
-
-                DownloadFile(url, fileName);
+                Console.WriteLine(importEntity.TableName + " - download started");
+                Directory.CreateDirectory(importEntity.TempFolderName);
+                DownloadFile(importEntity.FileURL, importEntity.ArchiveFilePath);
                 Console.WriteLine(importEntity.TableName + " - downloaded");
-
-                ClearTable(importEntity.TableName);
-                Console.WriteLine(importEntity.TableName + " - table cleared");
 
                 if (importEntity.IsZIPed)
                 {
-                    ExtractFile(fileName);
+                    ExtractFile(importEntity);
                     Console.WriteLine(importEntity.TableName + " - file was uziped");
                 }
 
+                ShrinkDB();
+                ClearTable(importEntity.TableName);
+                Console.WriteLine(importEntity.TableName + " - table cleared");
+
+                ShrinkDB();
                 BulkImport(importEntity);
+                ClearAfterBulkInsert(importEntity);
+                ShrinkDB();
             }
             catch (Exception exception)
             {
-                WriteError(importEntity.TableName + " - " + exception.Message);
+                WriteError(importEntity.FileURL + " - " + exception.Message);
+            }
+        }
+
+        private static void ShrinkDB()
+        {
+            if (_shrinkInProggress)
+            {
+                return;
+            }
+
+            _shrinkInProggress = true;
+            Console.WriteLine("DataBase shrink started.");
+
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    string sqlCommand = $@"DBCC SHRINKDATABASE ([{connection.Database}], 0);";
+
+                    connection.Open();
+
+                    using (var command = new SqlCommand(sqlCommand, connection))
+                    {
+                        command.CommandTimeout = int.MaxValue;
+                        command.ExecuteNonQuery();
+                    }
+
+                    connection.Close();
+
+                    Console.WriteLine("DataBase shrinked.");
+                }
+            }
+            catch (Exception exception)
+            {
+                WriteError("DataBase shrinked exception: " + exception.Message);
+            }
+            finally
+            {
+                _shrinkInProggress = false;
             }
         }
 
@@ -275,45 +317,62 @@ namespace Import.Geonames.org
             }
         }
 
-        private static void ExtractFile(string fileName)
+        private static void ExtractFile(ImportEntity importEntity)
         {
             try
             {
-                ZipFile.ExtractToDirectory(fileName, _tempFolderName);
+                ZipFile.ExtractToDirectory(importEntity.ArchiveFilePath, importEntity.TempFolderName);
             }
-            catch
+            catch (IOException exception)
             {
                 //Some idiots puts 2 files in 1 archive! So we should suppress exception.
             }
+            catch (Exception exception)
+            {
+                WriteError($"{importEntity.TableName} - extract file exception: {exception.Message}");
+            }
 
-            File.Delete(fileName);
+            File.Delete(importEntity.ArchiveFilePath);
         }
 
         private static void ClearTable(string tableName)
         {
-            using (var connection = new SqlConnection(_connectionString))
+            Console.WriteLine($"{tableName} - clear started.");
+
+            try
             {
-                connection.Open();
-
-                string clearTableSql = $"DELETE FROM [gno].[{tableName}];";
-
-                using (SqlCommand clearTable = new SqlCommand(clearTableSql, connection))
+                using (var connection = new SqlConnection(_connectionString))
                 {
-                    clearTable.ExecuteNonQuery();
-                }
+                    connection.Open();
 
-                connection.Close();
+                    string clearTableSql = $"TRUNCATE TABLE [gno].[{tableName}];";
+
+                    using (SqlCommand clearTable = new SqlCommand(clearTableSql, connection))
+                    {
+                        clearTable.CommandTimeout = int.MaxValue;
+                        clearTable.ExecuteNonQuery();
+                    }
+
+                    connection.Close();
+
+                    Console.WriteLine($"{tableName} - cleared.");
+                }
+            }
+            catch (Exception exception)
+            {
+                WriteError($"{tableName} - during cleare was raised exception: {exception.Message}");
             }
         }
 
         private static void BulkImport(ImportEntity importEntity)
         {
-            var fileName = Path.Combine(_tempFolderName, importEntity.TableName + ".txt");
-            var logFile = Path.Combine(_tempFolderName, importEntity.TableName + ".log");
+            Console.WriteLine(importEntity.TableName + " - import started");
+
+            string logFile = importEntity.DataFilePath + ".log";
 
             string sqlCommand = $@"
 BULK INSERT [gno].[{importEntity.TableName}]  
-FROM '{fileName}'  
+FROM '{importEntity.DataFilePath}'  
 WITH
 (
     KEEPNULLS
@@ -337,20 +396,18 @@ WITH
                 connection.Close();
             }
 
-            File.Delete(fileName);
             Console.WriteLine(importEntity.TableName + " - was imported");
         }
 
-        private static void FinalClear()
+        private static void ClearAfterBulkInsert(ImportEntity importEntity)
         {
-            IEnumerable<string> logFiles = Directory.EnumerateFiles(_tempFolderName, "*.log");
+            IEnumerable<string> logFiles = Directory.EnumerateFiles(importEntity.TempFolderName, "*.log");
 
             if (!logFiles.Any())
             {
-                Directory.Delete(_tempFolderName, true);
+                Directory.Delete(importEntity.TempFolderName, true);
             }
         }
-
 
         [Conditional("DEBUG")]
         private static void ReadKey()

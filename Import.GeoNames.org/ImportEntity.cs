@@ -1,28 +1,52 @@
-﻿namespace Import.GeoNames.org
+﻿using System;
+using System.IO;
+
+namespace Import.GeoNames.org
 {
     internal class ImportEntity
     {
-        public string TableName { get; }
-
-        public bool IsZIPed { get; }
+        public string FileURL { get; }
 
         public uint FirstRow { get; }
 
-        public string FileName
-        {
-            get
-            {
-                string ext = IsZIPed ? "zip" : "txt";
+        public string TableName { get; }
 
-                return $"{TableName}.{ext}";
-            }
-        }
+        public string TempFolderName { get; }
 
-        public ImportEntity(string tableName, bool isZIPed = false, uint firstRow = 1)
+        public bool IsZIPed { get; }
+
+        public string DataFilePath { get; }
+
+        public string ArchiveFilePath { get; }
+
+        public ImportEntity(string tempFolderName, string fileUrl, uint firstRow = 1, string tableName = null)
         {
-            TableName = tableName;
-            IsZIPed = isZIPed;
+            FileURL = fileUrl;
             FirstRow = firstRow;
+            TableName = tableName ?? Path.GetFileNameWithoutExtension(FileURL);
+
+            if (string.IsNullOrWhiteSpace(tempFolderName))
+            {
+                return;
+            }
+
+            TempFolderName = Path.Combine(tempFolderName, Guid.NewGuid().ToString());
+
+            string extention = Path.GetExtension(FileURL)?.ToLower();
+            IsZIPed = extention == ".zip";
+
+            string originalDataFileName = Path.GetFileNameWithoutExtension(fileUrl);
+
+            DataFilePath = Path.Combine(TempFolderName, originalDataFileName + ".txt");
+
+            if (IsZIPed)
+            {
+                ArchiveFilePath = Path.Combine(TempFolderName, TableName + ".zip");
+            }
+            else
+            {
+                ArchiveFilePath = DataFilePath;
+            }
         }
     }
 }

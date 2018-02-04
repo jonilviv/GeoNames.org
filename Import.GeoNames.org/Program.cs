@@ -37,6 +37,13 @@ namespace Import.Geonames.org
         [STAThread]
         private static void Main(string[] args)
         {
+            if (!args.Any())
+            {
+                ShowHelp();
+
+                return;
+            }
+
             for (var i = 0; i < args.Length; i++)
             {
                 string argument = args[i];

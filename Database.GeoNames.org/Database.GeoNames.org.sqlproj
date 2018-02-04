@@ -74,6 +74,7 @@
     <Build Include="Tables\gno.TimeZones.sql" />
     <Build Include="Tables\gno.CountryInfo.sql" />
     <Build Include="Tables\gno.Hierarchy.sql" />
+    <Build Include="Tables\gno.PostalCodes.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GeoNames.org.publish.xml" />

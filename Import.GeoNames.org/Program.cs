@@ -17,22 +17,11 @@ namespace Import.Geonames.org
     public static class Program
     {
         private const string __baseUrl = @"http://download.geonames.org/export/dump/";
+        private const string __postalCodesBaseUrl = @"http://download.geonames.org/export/zip/";
 
         private static string _tempFolderName;
         private static string _connectionString;
-
-        private static readonly ImportEntity[] __tablesNames =
-            {
-                new ImportEntity("admin1CodesASCII"),
-                new ImportEntity("admin2Codes"),
-                new ImportEntity("countryInfo", firstRow: 52),
-                new ImportEntity("hierarchy", true),
-                new ImportEntity("iso-languagecodes", firstRow: 2),
-                new ImportEntity("timeZones", firstRow: 2),
-                new ImportEntity("alternateNames", true),
-                new ImportEntity("allCountries", true)
-            };
-
+        private static ImportEntity[] _tablesNames;
 
         [STAThread]
         private static void Main(string[] args)
@@ -105,6 +94,12 @@ namespace Import.Geonames.org
                         }
 
                         break;
+                    case "-cleardb":
+                    case "/cleardb":
+                        BuildTables();
+                        ClearDB();
+
+                        return;
                 }
             }
 
@@ -123,11 +118,40 @@ namespace Import.Geonames.org
                 }
             }
 
+            BuildTables();
+
             Parallel.ForEach(__tablesNames, DoImportEntity);
 
             FinalClear();
 
             ReadKey();
+        }
+
+        private static void BuildTables()
+        {
+            _tablesNames = new[]
+            {
+                new ImportEntity(_tempFolderName, __postalCodesBaseUrl + "allCountries.zip", tableName: "PostalCodes"),
+                new ImportEntity(_tempFolderName, __baseUrl + "allCountries.zip"),
+                new ImportEntity(_tempFolderName, __baseUrl + "admin1CodesASCII.txt"),
+                new ImportEntity(_tempFolderName, __baseUrl + "admin2Codes.txt"),
+                new ImportEntity(_tempFolderName, __baseUrl + "countryInfo.txt", 52),
+                new ImportEntity(_tempFolderName, __baseUrl + "hierarchy.zip"),
+                new ImportEntity(_tempFolderName, __baseUrl + "iso-languagecodes.txt", 2),
+                new ImportEntity(_tempFolderName, __baseUrl + "timeZones.txt", 2),
+                new ImportEntity(_tempFolderName, __baseUrl + "alternateNames.zip")
+            };
+        }
+
+        private static void ClearDB()
+        {
+            ShrinkDB();
+
+            IEnumerable<string> tables = _tablesNames.Select(x => x.TableName);
+
+            Parallel.ForEach(tables, ClearTable);
+
+            ShrinkDB();
         }
 
         private static void WriteError(string errorMessage)
@@ -145,6 +169,7 @@ namespace Import.Geonames.org
         {
             Console.WriteLine(@"-c , -connectionString      Connection String for connecting to MS SQL Server.");
             Console.WriteLine(@"-tf, -tempFolder            Temporary folder, where files will be saved. If not set. will be used system TEMP folder.");
+            Console.WriteLine(@"-cleardb                    Clear whall DataBase.");
         }
 
         private static bool CheckConnection()

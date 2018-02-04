@@ -158,10 +158,9 @@ namespace Import.Geonames.org
         {
             lock (Console.Error)
             {
-                ConsoleColor originalColor = Console.ForegroundColor;
-                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.Error.WriteLine(errorMessage);
-                Console.ForegroundColor = originalColor;
+                Console.ResetColor();
             }
         }
 

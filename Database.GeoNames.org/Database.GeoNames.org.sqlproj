@@ -27,6 +27,11 @@
     <DefaultSchema>gno</DefaultSchema>
     <IncludeSchemaNameInFileName>True</IncludeSchemaNameInFileName>
     <TargetDatabase>GeoNames.org</TargetDatabase>
+    <AutoShrink>True</AutoShrink>
+    <Recovery>SIMPLE</Recovery>
+    <AutoCreateStatistics>True</AutoCreateStatistics>
+    <AutoCreateStatisticsIncremental>True</AutoCreateStatisticsIncremental>
+    <AutoUpdateStatisticsAsynchronously>True</AutoUpdateStatisticsAsynchronously>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>

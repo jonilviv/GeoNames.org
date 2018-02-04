@@ -95,8 +95,9 @@ namespace Import.Geonames.org
                         }
 
                         _tempFolderName = args[i];
+                        bool correctTempFolder = !string.IsNullOrWhiteSpace(_tempFolderName) && Directory.Exists(_tempFolderName);
 
-                        if (string.IsNullOrWhiteSpace(_tempFolderName))
+                        if (!correctTempFolder)
                         {
                             WriteError(Resources.BAD_TEMPORARY_FOLDER);
 

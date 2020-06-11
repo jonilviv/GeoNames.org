@@ -14,7 +14,7 @@
   [CurrencyName] VARCHAR(20),
   [Phone] VARCHAR(20),
   [PostalCodeFormat] VARCHAR(100),
-  [PostalCodeRegex] VARCHAR(150),
+  [PostalCodeRegex] VARCHAR(200),
   [Languages] VARCHAR(100),
   [GeonameId] INT NOT NULL,
   [Neighbours] VARCHAR(50),
